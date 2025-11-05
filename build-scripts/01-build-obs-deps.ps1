@@ -84,7 +84,74 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     throw "Gitが見つかりません。https://git-scm.com/download/win からインストールしてください。"
 }
-Write-Success "Git found"
+
+$gitPath = (Get-Command git).Source
+Write-Success "Git found: $gitPath"
+
+# MSYS2環境で実行されているかを判定
+$isMsys2Environment = $false
+if ($env:MSYSTEM) {
+    # MSYS2環境変数が設定されている（MSYS2ターミナルから実行）
+    $isMsys2Environment = $true
+    Write-Info "MSYS2環境で実行されています (MSYSTEM=$env:MSYSTEM)"
+}
+
+# PowerShellから実行している場合、MSYS2にGitがインストールされているか確認
+if (-not $isMsys2Environment) {
+    Write-Info "PowerShell環境で実行されています"
+    
+    # MSYS2がインストールされているか確認
+    $msys2Path = "C:\msys64"
+    $msys2GitPath = "$msys2Path\usr\bin\git.exe"
+    
+    if (Test-Path $msys2Path) {
+        Write-Info "MSYS2が検出されました: $msys2Path"
+        
+        # MSYS2内にGitがインストールされているか確認
+        if (Test-Path $msys2GitPath) {
+            Write-Warning "MSYS2内にGitがインストールされています: $msys2GitPath"
+            Write-Warning "後続のビルド処理でMSYS2を使用する際にGitが競合してエラーになる可能性があります"
+            Write-Host "`n推奨対応:" -ForegroundColor Yellow
+            Write-Host "  MSYS2からGitをアンインストールしてください:" -ForegroundColor Cyan
+            Write-Host "  方法1: MSYS2ターミナルで実行 → pacman -R git" -ForegroundColor Gray
+            Write-Host "  方法2: 環境変数PATHからC:\msys64\usr\binを削除" -ForegroundColor Gray
+            
+            $continue = Read-Host "`nこのまま続行しますか? (ビルドエラーが発生する可能性があります) (Y/N)"
+            if ($continue -ne 'Y' -and $continue -ne 'y') {
+                throw "ビルドを中止しました。MSYS2のGitをアンインストールしてから再実行してください"
+            }
+        } else {
+            Write-Success "MSYS2内にGitはインストールされていません（競合なし）"
+        }
+    }
+    
+    # Windows版Gitが使用されているか確認
+    if ($gitPath -notmatch "msys64") {
+        Write-Success "Windows版Git for Windowsが使用されています"
+    }
+} else {
+    # MSYS2環境で実行されている場合の警告
+    if ($gitPath -match "msys64") {
+        Write-Warning "MSYS2のGitが検出されました: $gitPath"
+        Write-Warning "このビルドスクリプトはWindows版Git for Windowsでの使用を推奨します"
+        
+        # Windows版Gitがインストールされているか確認
+        $windowsGitPath = "C:\Program Files\Git\cmd\git.exe"
+        if (Test-Path $windowsGitPath) {
+            Write-Host "`n推奨対応:" -ForegroundColor Yellow
+            Write-Host "  PowerShell (pwsh) でこのスクリプトを実行してください" -ForegroundColor Cyan
+            Write-Host "  （MSYS2ターミナルではなくWindows PowerShellから実行）" -ForegroundColor Cyan
+            
+            $continue = Read-Host "`nこのまま続行しますか? (Y/N)"
+            if ($continue -ne 'Y' -and $continue -ne 'y') {
+                throw "ビルドを中止しました"
+            }
+        } else {
+            Write-Warning "Windows版Git for Windowsがインストールされていません"
+            Write-Info "https://git-scm.com/download/win からインストールすることを推奨します"
+        }
+    }
+}
 
 # Visual Studio環境チェック
 Write-Info "Visual Studio環境を確認中..."

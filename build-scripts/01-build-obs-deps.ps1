@@ -38,10 +38,46 @@ function Write-Info {
 # ===== 環境チェック =====
 Write-Step "環境のチェック"
 
+# PowerShell バージョン情報の表示
+Write-Info "PowerShell環境を確認中..."
+Write-Host "  エディション: $($PSVersionTable.PSEdition)" -ForegroundColor Gray
+Write-Host "  バージョン: $($PSVersionTable.PSVersion)" -ForegroundColor Gray
+Write-Host "  実行ファイル: $PSHOME\pwsh.exe" -ForegroundColor Gray
+
 # PowerShell Core (pwsh) の確認
 if ($PSVersionTable.PSVersion.Major -lt 7) {
     Write-Warning "PowerShell Core (pwsh) v7以降の使用を推奨します"
     Write-Info "現在のバージョン: $($PSVersionTable.PSVersion)"
+    
+    # pwsh.exeが利用可能か確認
+    if (Get-Command pwsh -ErrorAction SilentlyContinue) {
+        $pwshVersion = (pwsh -Command '$PSVersionTable.PSVersion.ToString()' 2>$null)
+        Write-Info "PowerShell Core (pwsh) が利用可能です: バージョン $pwshVersion"
+        Write-Host "`nこのスクリプトをPowerShell Core (pwsh)で実行し直すことを推奨します:" -ForegroundColor Yellow
+        Write-Host "  pwsh -File .\build-scripts\01-build-obs-deps.ps1" -ForegroundColor Cyan
+        
+        $switchToPwsh = Read-Host "`nPowerShell Core (pwsh) で再実行しますか? (Y/N)"
+        if ($switchToPwsh -eq 'Y' -or $switchToPwsh -eq 'y') {
+            # pwshで再実行
+            $scriptPath = $MyInvocation.MyCommand.Path
+            $params = @()
+            if ($WorkDir -ne "C:\temp") { $params += "-WorkDir `"$WorkDir`"" }
+            if ($Target -ne 'x64') { $params += "-Target $Target" }
+            if ($Configuration -ne 'Release') { $params += "-Configuration $Configuration" }
+            if ($Clean) { $params += "-Clean" }
+            
+            $pwshCommand = "pwsh -File `"$scriptPath`" $($params -join ' ')"
+            Write-Info "実行コマンド: $pwshCommand"
+            
+            Invoke-Expression $pwshCommand
+            exit $LASTEXITCODE
+        }
+    } else {
+        Write-Warning "PowerShell Core (pwsh) が見つかりません"
+        Write-Info "https://github.com/PowerShell/PowerShell からインストールしてください"
+    }
+} else {
+    Write-Success "PowerShell Core v$($PSVersionTable.PSVersion.Major) で実行中"
 }
 
 # Gitの確認

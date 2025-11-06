@@ -4,7 +4,7 @@ Windows環境でFDK-AAC対応のFFmpegとOBS Studioをソースからビルド�
 
 ## 概要
 
-このプロジェクトは、MSVC環境でゼロからFFmpeg（FDK-AAC有効化）とOBS Studioをビルドするための3つのPowerShellスクリプトを提供します。
+このプロジェクトは、MSVC環境でゼロからFFmpeg（FDK-AAC有効化）とOBS Studioをビルドするための2つのPowerShellスクリプトを提供します。
 
 ### 主な特徴
 
